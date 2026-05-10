@@ -1,0 +1,23 @@
+{
+  "name": "notebooklm-rag",
+  "version": "1.0.0",
+  "description": "A Google NotebookLM-style RAG app for chatting with uploaded PDF and text documents.",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server/index.js",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "@qdrant/js-client-rest": "^1.15.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "openai": "^6.9.1",
+    "pdf-parse": "^1.1.1",
+    "uuid": "^13.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
