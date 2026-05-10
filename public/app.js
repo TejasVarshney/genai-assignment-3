@@ -14,6 +14,7 @@ const serviceStatus = document.querySelector("#serviceStatus");
 
 let documents = [];
 let selectedDocId = "";
+const localDocumentsKey = "notebooklm-rag-documents";
 
 function setStatus(element, message, isError = false) {
   element.textContent = message;
@@ -36,6 +37,27 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value));
+}
+
+function getLocalDocuments() {
+  try {
+    return JSON.parse(localStorage.getItem(localDocumentsKey) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalDocument(document) {
+  const existing = getLocalDocuments().filter((item) => item.id !== document.id);
+  localStorage.setItem(localDocumentsKey, JSON.stringify([document, ...existing]));
+}
+
+function mergeDocuments(serverDocuments, localDocuments) {
+  const byId = new Map();
+  for (const document of [...serverDocuments, ...localDocuments]) {
+    byId.set(document.id, document);
+  }
+  return [...byId.values()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 function selectDocument(docId) {
@@ -76,7 +98,7 @@ function renderDocuments() {
 
     const meta = document.createElement("span");
     meta.className = "document-meta";
-    meta.textContent = `${doc.pageCount} page${doc.pageCount === 1 ? "" : "s"} · ${doc.chunkCount} chunks · ${formatDate(doc.createdAt)}`;
+    meta.textContent = `${doc.pageCount} page${doc.pageCount === 1 ? "" : "s"} - ${doc.chunkCount} chunks - ${formatDate(doc.createdAt)}`;
 
     button.append(name, meta);
     documentList.append(button);
@@ -102,7 +124,7 @@ function renderSources(sources) {
     const meta = document.createElement("div");
     meta.className = "source-meta";
     const score = typeof source.score === "number" ? source.score.toFixed(3) : "n/a";
-    meta.textContent = `[${source.id}] Page ${source.pageNumber} · Chunk ${source.chunkIndex + 1} · Score ${score}`;
+    meta.textContent = `[${source.id}] Page ${source.pageNumber} - Chunk ${source.chunkIndex + 1} - Score ${score}`;
 
     const text = document.createElement("p");
     text.textContent = source.text;
@@ -114,15 +136,25 @@ function renderSources(sources) {
 
 async function loadDocuments() {
   const response = await fetch("/api/documents");
-  const data = await response.json();
+  const data = await readJsonResponse(response);
   if (!response.ok) throw new Error(data.error || "Could not load documents.");
 
-  documents = data.documents;
+  documents = mergeDocuments(data.documents || [], getLocalDocuments());
   if (!selectedDocId && documents[0]) {
     selectedDocId = documents[0].id;
   }
   renderDocuments();
   selectDocument(selectedDocId);
+}
+
+async function readJsonResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  throw new Error(`Expected JSON but received ${response.status}. Check that Netlify redirects /api/* to functions. Response started with: ${text.slice(0, 40)}`);
 }
 
 async function checkHealth() {
@@ -157,9 +189,10 @@ uploadForm.addEventListener("submit", async (event) => {
       method: "POST",
       body
     });
-    const data = await response.json();
+    const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.error || "Upload failed.");
 
+    saveLocalDocument(data.document);
     setStatus(uploadStatus, `Indexed ${data.document.chunkCount} chunks.`);
     documentInput.value = "";
     await loadDocuments();
@@ -194,7 +227,7 @@ questionForm.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ docId: selectedDocId, question, topK: 5 })
     });
-    const data = await response.json();
+    const data = await readJsonResponse(response);
     if (!response.ok) throw new Error(data.error || "Question failed.");
 
     loading.querySelector("p").textContent = data.answer;

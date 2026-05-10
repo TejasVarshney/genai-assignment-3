@@ -11,7 +11,25 @@ function isText(file) {
 
 export async function loadUploadedDocument(file) {
   if (isPdf(file)) {
-    const buffer = await fs.readFile(file.path);
+    return loadDocumentFromBuffer({
+      buffer: await fs.readFile(file.path),
+      mimeType: file.mimetype,
+      fileName: file.originalname
+    });
+  }
+
+  if (isText(file)) {
+    const text = await fs.readFile(file.path, "utf8");
+    return [{ text, pageNumber: 1 }];
+  }
+
+  throw new Error("Unsupported file type. Upload a PDF or plain text file.");
+}
+
+export async function loadDocumentFromBuffer({ buffer, mimeType, fileName }) {
+  const lowerName = fileName.toLowerCase();
+
+  if (mimeType === "application/pdf" || lowerName.endsWith(".pdf")) {
     const pages = [];
 
     await pdfParse(buffer, {
@@ -32,9 +50,8 @@ export async function loadUploadedDocument(file) {
     }));
   }
 
-  if (isText(file)) {
-    const text = await fs.readFile(file.path, "utf8");
-    return [{ text, pageNumber: 1 }];
+  if (mimeType?.startsWith("text/") || lowerName.endsWith(".txt")) {
+    return [{ text: buffer.toString("utf8"), pageNumber: 1 }];
   }
 
   throw new Error("Unsupported file type. Upload a PDF or plain text file.");
