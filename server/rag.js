@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { QdrantClient } from "@qdrant/js-client-rest";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import { config, assertRuntimeConfig } from "./config.js";
 
 const qdrant = new QdrantClient({
@@ -81,7 +81,7 @@ export async function indexChunks({ docId, fileName, chunks }) {
     await qdrant.upsert(config.qdrantCollection, {
       wait: true,
       points: batch.map((chunk, batchIndex) => ({
-        id: uuidv4(),
+        id: randomUUID(),
         vector: embeddings[batchIndex],
         payload: {
           docId,

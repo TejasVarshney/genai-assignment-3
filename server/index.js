@@ -1,9 +1,9 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
-import { v4 as uuidv4 } from "uuid";
 import { config } from "./config.js";
 import { chunkTextByPage } from "./chunking.js";
 import { loadUploadedDocument } from "./documentLoader.js";
@@ -64,7 +64,7 @@ app.post("/api/upload", upload.single("document"), async (req, res, next) => {
     }
 
     const document = {
-      id: uuidv4(),
+      id: randomUUID(),
       fileName: file.originalname,
       mimeType: file.mimetype,
       createdAt: new Date().toISOString(),

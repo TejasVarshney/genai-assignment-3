@@ -1,5 +1,5 @@
 import Busboy from "busboy";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import { chunkTextByPage } from "../../server/chunking.js";
 import { loadDocumentFromBuffer } from "../../server/documentLoader.js";
 import { indexChunks } from "../../server/rag.js";
@@ -58,7 +58,7 @@ export async function handler(event) {
     }
 
     const document = {
-      id: uuidv4(),
+      id: randomUUID(),
       fileName: file.fileName,
       mimeType: file.mimeType,
       createdAt: new Date().toISOString(),
